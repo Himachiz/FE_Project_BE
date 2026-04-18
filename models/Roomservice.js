@@ -1,10 +1,11 @@
 const mongoose = require('mongoose');
 
 const RoomServiceSchema = new mongoose.Schema({
+  // If hotel is null/omitted, this service is GLOBAL and applies to all hotels
   hotel: {
     type: mongoose.Schema.ObjectId,
     ref: 'Hotel',
-    required: true,
+    default: null,
     index: true
   },
 
@@ -32,7 +33,7 @@ const RoomServiceSchema = new mongoose.Schema({
   versionKey: false
 });
 
-// prevent duplicate service names per hotel
-RoomServiceSchema.index({ hotel: 1, name: 1 }, { unique: true });
+// prevent duplicate names per hotel (sparse so null hotel fields don't all conflict)
+RoomServiceSchema.index({ hotel: 1, name: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('RoomService', RoomServiceSchema);

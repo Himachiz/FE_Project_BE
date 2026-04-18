@@ -4,19 +4,21 @@ const RoomService = require("../models/Roomservice");
 const Booking = require("../models/Booking");
 const Hotel = require("../models/Hotel");
 
-// Create a new room service for a hotel
+// Create a new room service — omit hotelId to create a GLOBAL service (applies to all hotels)
 exports.createRoomService = async (req, res) => {
   try {
     const { hotelId, name, description, status } = req.body;
 
-    // Verify hotel exists
-    const hotel = await Hotel.findById(hotelId);
-    if (!hotel) {
-      return res.status(404).json({ success: false, message: "Hotel not found" });
+    // If hotelId provided, verify hotel exists
+    if (hotelId) {
+      const hotel = await Hotel.findById(hotelId);
+      if (!hotel) {
+        return res.status(404).json({ success: false, message: "Hotel not found" });
+      }
     }
 
     const service = await RoomService.create({
-      hotel: hotelId,
+      hotel: hotelId || null,
       name,
       description,
       minQuantity,
@@ -33,12 +35,15 @@ exports.createRoomService = async (req, res) => {
   }
 };
 
-// Get all room services for a specific hotel
+// Get all room services for a specific hotel (hotel-specific + global services)
 exports.getRoomServicesByHotel = async (req, res) => {
   try {
     const { hotelId } = req.params;
 
-    const services = await RoomService.find({ hotel: hotelId });
+    // Return services specific to this hotel OR global services (hotel: null)
+    const services = await RoomService.find({
+      $or: [{ hotel: hotelId }, { hotel: null }]
+    }).sort({ hotel: -1, name: 1 }); // hotel-specific first, then global
 
     res.status(200).json({
       success: true,
