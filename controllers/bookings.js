@@ -8,21 +8,22 @@ exports.getBookings = async(req, res, next) => {
     let query;
     //General users can see only their
     if(req.user.role !== 'admin'){
-        query = Booking.find({user:req.user.id}).populate({
-            path: 'hotel',
-            select: 'name province tel'
-        });
+        query = Booking.find({user:req.user.id})
+            .populate({ path: 'hotel', select: 'name province tel' })
+            .populate({ path: 'services.service', select: 'name description status' });
     }
     else{ //If you are Admin, you see all XD!
         if(req.params.hotelId){
             console.log(req.params.hotelId);
             query = Booking.find({hotel:req.params.hotelId})
-            .populate({ path: 'hotel', select: 'name province tel' })
-            .populate({ path: 'user', select: 'name email' });
+                .populate({ path: 'hotel', select: 'name province tel' })
+                .populate({ path: 'user', select: 'name email' })
+                .populate({ path: 'services.service', select: 'name description status' });
         } else {
             query = Booking.find()
-            .populate({ path: 'hotel', select: 'name province tel' })
-            .populate({ path: 'user', select: 'name email' });
+                .populate({ path: 'hotel', select: 'name province tel' })
+                .populate({ path: 'user', select: 'name email' })
+                .populate({ path: 'services.service', select: 'name description status' });
         }
     }
 
@@ -49,10 +50,9 @@ exports.getBookings = async(req, res, next) => {
 //@access Public
 exports.getBooking = async(req, res, next) => {
     try{
-        const booking = await Booking.findById(req.params.id).populate({
-            path: 'hotel',
-            select: 'name description tel'
-        });
+        const booking = await Booking.findById(req.params.id)
+            .populate({ path: 'hotel', select: 'name description tel' })
+            .populate({ path: 'services.service', select: 'name description status' });
         if(!booking){
             return res.status(404).json({
                 success: false,
@@ -111,6 +111,16 @@ exports.addBooking = async(req, res, next) => {
             });
         }
 
+        // Handle services array - store selected service refs with a booking-specific status
+        if (req.body.services && Array.isArray(req.body.services)) {
+            req.body.services = req.body.services.map(serviceId => ({
+                service: serviceId,
+                status: 'pending'
+            }));
+        } else {
+            req.body.services = [];
+        }
+
         const booking = await Booking.create(req.body);
 
         res.status(200).json({success: true, data: booking});
@@ -160,6 +170,13 @@ exports.updateBooking = async(req, res, next) => {
                     message: `You already have a booking for this hotel on this date!`
                 });
             }
+        }
+
+        if (req.body.services && Array.isArray(req.body.services)) {
+            req.body.services = req.body.services.map(serviceId => ({
+                service: serviceId,
+                status: 'pending'
+            }));
         }
 
         booking = await Booking.findByIdAndUpdate(req.params.id, req.body, {new: true, runValidators: true});

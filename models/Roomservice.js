@@ -1,17 +1,38 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
 const RoomServiceSchema = new mongoose.Schema({
-  bookingId: {
-    type: mongoose.Schema.Types.ObjectId,
+  hotel: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Hotel',
     required: true,
-    ref: "Booking"
+    index: true
   },
-  serviceType: {
+
+  name: {
     type: String,
-    required: true
+    required: true,
+    trim: true
+  },
+
+  description: {
+    type: String,
+    required: true,
+    trim: true
+  },
+
+  status: {
+    type: String,
+    enum: ['available', 'unavailable'],
+    default: 'available',
+    index: true
   }
+
 }, {
+  timestamps: true,
   versionKey: false
 });
 
-module.exports = mongoose.model("RoomService", RoomServiceSchema);
+// prevent duplicate service names per hotel
+RoomServiceSchema.index({ hotel: 1, name: 1 }, { unique: true });
+
+module.exports = mongoose.model('RoomService', RoomServiceSchema);
