@@ -1,5 +1,6 @@
 const Booking = require('../models/Booking');
 const Hotel = require('../models/Hotel');
+const Review = require('../models/Review');
 
 //@desc Get all bookings
 //@route Get /api/v1/bookings
@@ -211,6 +212,16 @@ exports.deleteBooking = async(req, res, next) => {
                 success: false,
                 message: `User ${req.user.id} is not authorized to delete this booking`
             });
+        }
+
+        // If this is the last booking for (user, hotel), cascade-delete their review
+        const otherBookingsCount = await Booking.countDocuments({
+            _id: { $ne: booking._id },
+            user: booking.user,
+            hotel: booking.hotel
+        });
+        if(otherBookingsCount === 0){
+            await Review.deleteOne({ user: booking.user, hotel: booking.hotel });
         }
 
         await booking.deleteOne();

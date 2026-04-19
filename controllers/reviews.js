@@ -28,6 +28,12 @@ exports.getReviews = async (req, res, next) => {
         });
     } catch (err) {
         console.log(err.stack);
+        if (err.name === 'CastError') {
+            return res.status(400).json({
+                success: false,
+                message: `Invalid hotel ID: ${req.params.hotelId}`
+            });
+        }
         return res.status(500).json({
             success: false,
             message: 'Cannot find Reviews'
@@ -40,9 +46,6 @@ exports.getReviews = async (req, res, next) => {
 //@access Private (must have booking record at this hotel)
 exports.addReview = async (req, res, next) => {
     try {
-        req.body.hotel = req.params.hotelId;
-        req.body.user = req.user.id;
-
         const hotel = await Hotel.findById(req.params.hotelId);
         if (!hotel) {
             return res.status(404).json({
@@ -69,7 +72,21 @@ exports.addReview = async (req, res, next) => {
             });
         }
 
-        const review = await Review.create(req.body);
+        // Reject whitespace-only comment (schema trim setter does not guard this at create time)
+        if (req.body.comment === undefined || !String(req.body.comment).trim()) {
+            return res.status(400).json({
+                success: false,
+                message: 'Comment cannot be empty or contain only whitespace'
+            });
+        }
+
+        // Explicit whitelist to prevent mass assignment (likes/dislikes/createdAt spoofing)
+        const review = await Review.create({
+            score: req.body.score,
+            comment: req.body.comment,
+            hotel: req.params.hotelId,
+            user: req.user.id
+        });
         res.status(201).json({ success: true, data: review });
     } catch (err) {
         console.log(err.stack);
@@ -101,6 +118,14 @@ exports.updateReview = async (req, res, next) => {
             return res.status(401).json({
                 success: false,
                 message: `User ${req.user.id} is not authorized to update this review`
+            });
+        }
+
+        // Reject whitespace-only comment if caller tries to update it
+        if (req.body.comment !== undefined && !String(req.body.comment).trim()) {
+            return res.status(400).json({
+                success: false,
+                message: 'Comment cannot be empty or contain only whitespace'
             });
         }
 

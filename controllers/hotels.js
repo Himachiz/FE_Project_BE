@@ -83,7 +83,11 @@ exports.getHotels = async(req, res, next) => {
 exports.getHotel = async(req, res, next) => {
    try{
     const hotel = await Hotel.findById(req.params.id)
-        .populate({ path: 'reviews', populate: { path: 'user', select: 'name email' } });
+        .populate({
+            path: 'reviews',
+            options: { sort: { createdAt: -1 } },
+            populate: { path: 'user', select: 'name email' }
+        });
 
     if(!hotel){
         return  res.status(400).json({success: false});

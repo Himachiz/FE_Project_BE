@@ -3,9 +3,13 @@ const mongoose = require('mongoose');
 const ReviewSchema = new mongoose.Schema({
     score: {
         type: Number,
-        required: [true, 'Please add a score between 0 and 5'],
-        min: 1,
-        max: 5
+        required: [true, 'Please add a score between 1 and 5'],
+        min: [1, 'Score must be between 1 and 5'],
+        max: [5, 'Score must be between 1 and 5'],
+        validate: {
+            validator: Number.isInteger,
+            message: 'Score must be an integer between 1 and 5'
+        }
     },
     comment: {
         type: String,

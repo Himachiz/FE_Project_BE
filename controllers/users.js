@@ -1,4 +1,6 @@
 const User = require('../models/User');
+const Review = require('../models/Review');
+const Booking = require('../models/Booking');
 
 
 exports.getUsers = async (req, res, next) => {
@@ -106,7 +108,7 @@ exports.updateUser = async (req, res, next) => {
 
 exports.deleteUser = async(req,res,next) => {
 try{
-    const user = await User.findByIdAndDelete(req.params.id);
+    const user = await User.findById(req.params.id);
 
     if(!user){
         return res.status(400).json({
@@ -115,11 +117,16 @@ try{
             });
         }
 
+    // Cascade delete: remove all reviews and bookings belonging to this user
+    await Review.deleteMany({ user: user._id });
+    await Booking.deleteMany({ user: user._id });
+    await user.deleteOne();
+
     res.status(200).json({success: true, data: {}});
-        
+
 } catch(err){
     return res.status(400).json({
-        success: false, 
+        success: false,
         msg: `Cannot Delete User ${req.params.id}`
         });
    }
