@@ -57,5 +57,33 @@ describe("RoomService Controller - createRoomService", () => {
     // ตรวจสอบว่า findById ถูกเรียกด้วย ID ที่เราสมมติขึ้นมาจริงๆ ใช่ไหม
     expect(Hotel.findById).toHaveBeenCalledWith(mockHotelId);
     expect(res.status).toHaveBeenCalledWith(201);
-});
+  });
+
+  it("ควรคืนค่า 404 เมื่อไม่พบโรงแรม", async () => {
+    req.params.hotelId = "invalid_id";
+    Hotel.findById.mockResolvedValue(null);
+
+    await createRoomService(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it("ควรสร้างบริการส่วนกลางเมื่อไม่ระบุโรงแรม", async () => {
+    req.body = { name: "Global", status: "available" };
+    RoomService.create.mockResolvedValue({ _id: "global", hotel: null, status: "available" });
+
+    await createRoomService(req, res);
+
+    expect(RoomService.create).toHaveBeenCalledWith(expect.objectContaining({ hotel: null }));
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  it("ควรคืนค่า 400 เมื่อมี error", async () => {
+    req.params.hotelId = "1234";
+    Hotel.findById.mockRejectedValue(new Error("DB Error"));
+
+    await createRoomService(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
 });

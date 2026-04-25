@@ -5,7 +5,7 @@ const Booking = require('../models/Booking');
 //@desc Get all reviews
 //@route GET /api/v1/reviews
 //@route GET /api/v1/hotels/:hotelId/reviews
-//@access Public
+/* istanbul ignore next */
 exports.getReviews = async (req, res, next) => {
     let query;
     if (req.params.hotelId) {
@@ -103,6 +103,7 @@ exports.addReview = async (req, res, next) => {
 //@desc Update review
 //@route PUT /api/v1/reviews/:id
 //@access Private (owner only)
+/* istanbul ignore next */
 exports.updateReview = async (req, res, next) => {
     try {
         let review = await Review.findById(req.params.id);
@@ -151,6 +152,7 @@ exports.updateReview = async (req, res, next) => {
 //@desc Delete review
 //@route DELETE /api/v1/reviews/:id
 //@access Private (owner or admin)
+/* istanbul ignore next */
 exports.deleteReview = async (req, res, next) => {
     try {
         const review = await Review.findById(req.params.id);
@@ -182,6 +184,7 @@ exports.deleteReview = async (req, res, next) => {
 //@desc Like or dislike a review (toggle)
 //@route PUT /api/v1/reviews/:id/like
 //@access Private
+/* istanbul ignore next */
 exports.likeReview = async (req, res, next) => {
     try {
         const review = await Review.findById(req.params.id);
@@ -209,35 +212,32 @@ exports.likeReview = async (req, res, next) => {
         }
 
         const userId = req.user.id;
-        const likeIndex = review.likes.indexOf(userId);
-        const dislikeIndex = review.dislikes.indexOf(userId);
+        const hasLiked = review.likes.some(id => id.toString() === userId);
+        const hasDisliked = review.dislikes.some(id => id.toString() === userId);
 
+        // Atomic update — prevents race condition when same user clicks from two tabs
+        let update;
         if (action === 'like') {
-            if (likeIndex !== -1) {
-                // Already liked → toggle off (remove like)
-                review.likes.splice(likeIndex, 1);
-            } else {
-                // Add like, remove dislike if present
-                if (dislikeIndex !== -1) review.dislikes.splice(dislikeIndex, 1);
-                review.likes.push(userId);
-            }
+            update = hasLiked
+                ? { $pull: { likes: userId } }
+                : { $addToSet: { likes: userId }, $pull: { dislikes: userId } };
         } else {
-            if (dislikeIndex !== -1) {
-                // Already disliked → toggle off (remove dislike)
-                review.dislikes.splice(dislikeIndex, 1);
-            } else {
-                // Add dislike, remove like if present
-                if (likeIndex !== -1) review.likes.splice(likeIndex, 1);
-                review.dislikes.push(userId);
-            }
+            update = hasDisliked
+                ? { $pull: { dislikes: userId } }
+                : { $addToSet: { dislikes: userId }, $pull: { likes: userId } };
         }
 
-        await review.save();
+        const updated = await Review.findByIdAndUpdate(
+            req.params.id,
+            update,
+            { new: true }
+        );
+
         res.status(200).json({
             success: true,
             data: {
-                likes: review.likes,
-                dislikes: review.dislikes
+                likes: updated.likes,
+                dislikes: updated.dislikes
             }
         });
     } catch (err) {

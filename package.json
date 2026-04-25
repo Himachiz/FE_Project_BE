@@ -8,7 +8,8 @@
     "dev": "nodemon server.js",
     "test": "newman run tests/hotel-booking.postman_collection.json -e tests/hotel-booking.postman_environment.json",
     "test:report": "newman run tests/hotel-booking.postman_collection.json -e tests/hotel-booking.postman_environment.json --reporters cli,html --reporter-html-export tests/report.html",
-    "test:jest": "jest"
+    "test:jest": "jest",
+    "test-coverage": "jest --coverage"
   },
   "author": "",
   "license": "ISC",
