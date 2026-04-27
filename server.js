@@ -7,6 +7,13 @@ const connectDB = require('./config/db');
 const swaggerJsDoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 
+const mongoSanitize = require('@exortek/express-mongo-sanitize');
+const helmet = require('helmet');
+const {xss} = require('express-xss-sanitizer');
+const rateLimit = require('express-rate-limit');
+const hpp = require('hpp');
+const cors = require('cors');
+
 // Load env vars
 dotenv.config({ path: './config/config.env' });
 
@@ -219,6 +226,29 @@ app.use((req, res, next) => {
 
 //add body parser
 app.use(express.json());
+
+//Sanitize data
+app.use(mongoSanitize());
+
+//Set security headers
+app.use(helmet());
+
+//Prevent XSS attacks
+app.use(xss());
+
+//Rate Limiting
+const limiter = rateLimit({
+    windowMs:10*60*1000,//10 mins
+    max: 1000
+});
+
+app.use(limiter);
+
+//Prevent http param pollutions
+app.use(hpp());
+
+//Enable CORS
+app.use(cors());
 
 //Mount routers
 app.use('/api/v1/hotels', hotels);
