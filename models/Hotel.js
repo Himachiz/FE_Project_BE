@@ -62,13 +62,12 @@ HotelSchema.virtual('reviews', {
 });
 
 // cleanup services when hotel deleted
-HotelSchema.pre("findOneAndDelete", async function(next) {
+HotelSchema.pre("findOneAndDelete", async function() {
   const hotel = await this.model.findOne(this.getFilter());
   if (hotel) {
     await mongoose.model("RoomService").deleteMany({ hotel: hotel._id });
     await mongoose.model("Booking").deleteMany({ hotel: hotel._id });
   }
-  next();
 });
 
 module.exports = mongoose.model('Hotel', HotelSchema);

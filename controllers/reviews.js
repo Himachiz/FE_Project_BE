@@ -212,16 +212,16 @@ exports.likeReview = async (req, res, next) => {
         }
 
         const userId = req.user.id;
-        const hasLiked = review.likes.some(id => id.toString() === userId);
-        const hasDisliked = review.dislikes.some(id => id.toString() === userId);
+        const hasLiked = (review.likes || []).some(id => id.toString() === userId);
+        const hasDisliked = (review.dislikes || []).some(id => id.toString() === userId);
 
-        // Atomic update — prevents race condition when same user clicks from two tabs
-        let update;
+        // Atomic update
+        let update = {};
         if (action === 'like') {
             update = hasLiked
                 ? { $pull: { likes: userId } }
                 : { $addToSet: { likes: userId }, $pull: { dislikes: userId } };
-        } else {
+        } else if (action === 'dislike') {
             update = hasDisliked
                 ? { $pull: { dislikes: userId } }
                 : { $addToSet: { dislikes: userId }, $pull: { likes: userId } };
@@ -230,7 +230,10 @@ exports.likeReview = async (req, res, next) => {
         const updated = await Review.findByIdAndUpdate(
             req.params.id,
             update,
-            { returnDocument: 'after' }
+            { 
+                returnDocument: 'after',
+                runValidators: true 
+            }
         );
 
         res.status(200).json({
