@@ -1,9 +1,18 @@
 const express=require('express');
 const {register, login, getMe}=require('../controllers/auth');
+const rateLimit = require('express-rate-limit');
 
 const router=express.Router();
 
 const {protect} = require('../middleware/auth');
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, msg: 'Too many authentication attempts, please try again later.' }
+});
 
 /**
  * @swagger
@@ -33,14 +42,13 @@ const {protect} = require('../middleware/auth');
  *             role: "user"
  *     responses:
  *       200:
- *         description: User registered successfully. Returns user data and JWT token in cookie.
+ *         description: User registered successfully. JWT is set in the HttpOnly cookie.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 success: { type: boolean }
- *                 token: { type: string }
  *                 _id: { type: string }
  *                 name: { type: string }
  *                 email: { type: string }
@@ -56,14 +64,14 @@ const {protect} = require('../middleware/auth');
  *               success: false
  *               message: "Please add a valid email"
  */
-router.post('/register', register);
+router.post('/register', authLimiter, register);
 
 /**
  * @swagger
  * /auth/login:
  *   post:
  *     summary: Login user
- *     description: Authenticate a user with email and password to receive a JWT token and set an auth cookie.
+ *     description: Authenticate a user with email and password and set an auth cookie.
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -85,14 +93,13 @@ router.post('/register', register);
  *             password: "password123"
  *     responses:
  *       200:
- *         description: Login successful. JWT token is returned in the response body and set in the 'token' cookie.
+ *         description: Login successful. JWT token is set in the 'token' cookie.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 success: { type: boolean }
- *                 token: { type: string }
  *                 _id: { type: string }
  *                 name: { type: string }
  *                 email: { type: string }
@@ -112,7 +119,7 @@ router.post('/register', register);
  *               success: false
  *               message: "Your account is banned"
  */
-router.post('/login', login);
+router.post('/login', authLimiter, login);
 
 /**
  * @swagger

@@ -1,18 +1,36 @@
 const User=require('../models/User');
 
+const isStringField = (value) => typeof value === 'string' && !Array.isArray(value);
+
 //@desc Register user
 //@route GET /api/v1/auth/register
 //@acess Public
 exports.register = async(req, res, next) => {
     try{
         const {name, tel, email, password, role} = req.body;
+        if (!isStringField(email) || !isStringField(password)) {
+            return res.status(400).json({
+                success: false,
+                msg: 'Email and password must be strings'
+            });
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+        const normalizedPassword = password.trim();
+
+        if (!normalizedEmail || !normalizedPassword) {
+            return res.status(400).json({
+                success: false,
+                msg: 'Please provide an email and password'
+            });
+        }
 
         //Create user
         const user=await User.create({
             name,
             tel,
-            email,
-            password,
+            email: normalizedEmail,
+            password: normalizedPassword,
             role
         });
 
@@ -35,13 +53,23 @@ exports.login = async(req, res, next) => {
     try {
         const {email, password}=req.body;
 
+        if (!isStringField(email) || !isStringField(password)) {
+            return res.status(400).json({
+                success: false,
+                msg: 'Email and password must be strings'
+            });
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+        const normalizedPassword = password.trim();
+
         //Validate email & password
-        if(!email || !password) {
+        if(!normalizedEmail || !normalizedPassword) {
             return res.status(400).json({success: false, msg: 'Please provide an email and password'}) ;
         }
 
         //Check for user
-        const user = await User.findOne({email}).select('+password');
+        const user = await User.findOne({ email: normalizedEmail }).select('+password');
         if(!user) {
             return res.status(400).json({success: false, msg: 'Invalid credentials'}) ;
         }
@@ -51,7 +79,7 @@ exports.login = async(req, res, next) => {
         }
 
         //Check if password matches
-        const isMatch = await user.matchPassword(password) ;
+        const isMatch = await user.matchPassword(normalizedPassword) ;
 
         if(!isMatch) {
             return res.status(401).json({success: false, msg: 'Invalid credentials'}) ;
@@ -79,7 +107,6 @@ const sendTokenResponse = (user, statusCode, res)=>{
 
     res.status(statusCode).cookie('token',token,options).json({
         success: true,
-        token,
         _id: user._id,
         name: user.name,
         email: user.email,
